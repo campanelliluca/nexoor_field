@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-// Import assoluti per i nostri file
-import 'package:nexoor_field/models/plant_model.dart';
-import 'package:nexoor_field/services/plant_service.dart';
-
+// Importiamo la nuova schermata (usa il percorso corretto se hai creato la cartella)
+import 'package:nexoor_field/screen/customers/customer_form_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inizializzazione della connessione al backend Supabase
+  // Inizializzazione Supabase con le tue chiavi
   await Supabase.initialize(
     url: 'https://abvkuhtvkamohwqklvhn.supabase.co',
     anonKey: 'sb_publishable_u9c0gqfzYg3fE_HQn-zQKQ_ZcjI4r64',
@@ -27,40 +25,50 @@ class NexoorApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      // Impostiamo la HomeScreen come pagina iniziale
       home: const HomeScreen(),
     );
   }
 }
 
-// Schermata principale con il pulsante di test
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Test Connessione Nexoor')),
+      appBar: AppBar(
+        title: const Text('Dashboard Nexoor'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
       body: Center(
-        child: ElevatedButton(
-          onPressed: () async {
-            // 1. Creiamo un oggetto impianto di test basato sul Libretto 2014
-            final testPlant = PlantModel(
-              cadastralCode: 'TEST-2026-001', // Codice catasto fittizio
-              interventionType: 'Nuova installazione', //
-              thermalPowerKw: 24.0, // Esempio potenza caldaia domestica
-              carrierFluid: 'Acqua', // Fluido standard radiatori
-            );
-
-            // 2. Chiamiamo il servizio per inviare i dati a Supabase
-            await PlantService().savePlant(testPlant);
-            
-            // 3. Mostriamo un feedback all'utente
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Tentativo di invio eseguito! Controlla la console.')),
-            );
-          },
-          child: const Text('Invia Impianto di Prova'),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.engineering, size: 80, color: Colors.blue),
+            const SizedBox(height: 20),
+            const Text(
+              'Gestione Impianti Termici',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 40),
+            // Pulsante per navigare al form del cliente
+            ElevatedButton.icon(
+              onPressed: () {
+                // Il Navigator.push "spinge" la nuova pagina sopra quella attuale
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CustomerFormScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.person_add),
+              label: const Text('Aggiungi Nuovo Cliente'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              ),
+            ),
+          ],
         ),
       ),
     );
