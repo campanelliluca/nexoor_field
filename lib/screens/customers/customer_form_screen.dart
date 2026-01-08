@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 // Import assoluti per coerenza e stabilità
 import 'package:nexoor_field/models/customer_model.dart';
 import 'package:nexoor_field/services/customer_service.dart';
+import 'package:nexoor_field/screens/properties/property_form_screen.dart';
 
 class CustomerFormScreen extends StatefulWidget {
   const CustomerFormScreen({super.key});
@@ -36,12 +37,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   // --- LOGICA DI BUSINESS (Separata dalla UI) ---
   
   Future<void> _handleSave() async {
-    // 1. Validazione: controlla se i campi obbligatori sono pieni
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    // 2. Creazione del modello con i dati raccolti
     final customer = CustomerModel(
       fullName: _nameController.text.trim(),
       fiscalCode: _fiscalCodeController.text.trim().toUpperCase(),
@@ -50,15 +49,22 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     );
 
     try {
-      // 3. Chiamata al servizio per il salvataggio su Supabase
-      await CustomerService().createCustomer(customer);
+      // Ora savedCustomer riceverà correttamente il modello con l'ID
+      final savedCustomer = await CustomerService().createCustomer(customer);
       
       if (mounted) {
-        _showFeedback('✅ Cliente registrato con successo!');
-        Navigator.pop(context); // Torna alla home
+        _showFeedback('✅ Anagrafica salvata. Ora inseriamo l\'indirizzo.');
+
+        // Navigazione verso la proprietà usando l'ID appena ottenuto
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PropertyFormScreen(customerId: savedCustomer.id!),
+          ),
+        );
       }
     } catch (e) {
-      if (mounted) _showFeedback('❌ Errore durante il salvataggio');
+      if (mounted) _showFeedback('❌ Errore: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

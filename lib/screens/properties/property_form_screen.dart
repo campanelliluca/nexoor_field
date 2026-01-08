@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-// Import assoluti: puntano ai modelli e servizi che abbiamo creato
+// Import assoluti: collegano il form alla logica dei dati e al database
 import 'package:nexoor_field/models/property_model.dart';
 import 'package:nexoor_field/services/property_service.dart';
 
 class PropertyFormScreen extends StatefulWidget {
-  // Riceviamo l'ID del cliente per legare la proprietà al suo proprietario
+  // Riceviamo l'ID del cliente per legare questa sede al suo proprietario legale
   final String customerId;
 
   const PropertyFormScreen({super.key, required this.customerId});
@@ -14,54 +14,59 @@ class PropertyFormScreen extends StatefulWidget {
 }
 
 class _PropertyFormScreenState extends State<PropertyFormScreen> {
-  // Chiave per la validazione del form
+  // Chiave globale per convalidare tutti i campi del form contemporaneamente
   final _formKey = GlobalKey<FormState>();
   
-  // Controller per leggere i testi inseriti (Ubicazione Scheda 1.2)
+  // Controller per estrarre il testo inserito dal tecnico
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
   final _provinceController = TextEditingController();
 
-  // Valore selezionato nel menu a tendina (Default E1)
+  // Valore predefinito per la categoria edificio (E1: residenziale)
   String _selectedCategory = 'E1';
 
-  // Lista delle categorie edilizie ufficiali (DM 10/02/2014)
+  // Lista delle categorie ufficiali previste dalla Scheda 1.2 del Libretto
   final List<String> _buildingCategories = ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8'];
 
+  // Stato per gestire la rotellina di caricamento durante il salvataggio
   bool _isLoading = false;
 
   @override
   void dispose() {
+    // Liberiamo la memoria dai controller quando la pagina viene chiusa
     _addressController.dispose();
     _cityController.dispose();
     _provinceController.dispose();
     super.dispose();
   }
 
-  // Funzione che gestisce il salvataggio effettivo
+  // --- LOGICA DI SALVATAGGIO ---
+
   Future<void> _handleSave() async {
+    // 1. Controlla se i campi obbligatori sono stati compilati correttamente
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    // Creiamo il modello con i dati della Scheda 1.2
+    // 2. Crea l'oggetto PropertyModel con i dati dell'ubicazione
     final property = PropertyModel(
-      customerId: widget.customerId, // L'ID del cliente che possiede l'immobile
+      customerId: widget.customerId, // Lega l'indirizzo al cliente salvato in precedenza
       address: _addressController.text.trim(),
       city: _cityController.text.trim(),
-      province: _provinceController.text.trim().toUpperCase(),
-      buildingCategory: _selectedCategory,
+      province: _provinceController.text.trim().toUpperCase(), // Forza la sigla in maiuscolo
+      buildingCategory: _selectedCategory, // Categoria E1-E8 selezionata dal menu
     );
 
     try {
-      // Usiamo il servizio per inviare i dati a Supabase
+      // 3. Invia i dati a Supabase tramite il servizio dedicato
       await PropertyService().saveProperty(property);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Sede salvata con successo!')),
+          const SnackBar(content: Text('✅ Sede dell\'impianto salvata correttamente!')),
         );
-        Navigator.pop(context); // Torna alla schermata precedente
+        // Torna alla Dashboard una volta completato il flusso Cliente -> Proprietà
+        Navigator.pop(context); 
       }
     } catch (e) {
       if (mounted) {
@@ -73,6 +78,8 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
+  // --- INTERFACCIA UTENTE (UI) ---
 
   @override
   Widget build(BuildContext context) {
@@ -88,34 +95,32 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Dati Sede/Ubicazione (Scheda 1)',
+                    'Ubicazione dell\'edificio (Scheda 1.2)',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue),
                   ),
                   const SizedBox(height: 20),
                   
-                  // Campo Indirizzo
+                  // Utilizziamo l'helper per creare i campi dell'indirizzo
                   _buildTextField(_addressController, 'Indirizzo e n. civico', Icons.location_on),
                   const SizedBox(height: 15),
                   
-                  // Campo Comune
                   _buildTextField(_cityController, 'Comune', Icons.location_city),
                   const SizedBox(height: 15),
                   
-                  // Campo Provincia (Sigla 2 lettere)
+                  // Limitiamo la provincia a 2 caratteri per standard regionale
                   _buildTextField(_provinceController, 'Provincia (es. MI)', Icons.map, maxLength: 2),
                   
                   const SizedBox(height: 25),
-                  const Text('Categoria Edificio (Destinazione d\'uso)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Destinazione d\'uso (Categoria Edificio)', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
 
-                  // Menu a tendina per le categorie E1-E8
+                  // Selettore a tendina per evitare errori di inserimento normativo
                   DropdownButtonFormField<String>(
                     value: _selectedCategory,
-                    // NOTA: Rimosso 'const' da qui per evitare l'errore che avevi nello screenshot
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.home_work),
-                      labelText: 'Seleziona Categoria',
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.home_work),
+                      labelText: 'Seleziona Categoria E1-E8',
                     ),
                     items: _buildingCategories.map((String category) {
                       return DropdownMenuItem<String>(
@@ -134,7 +139,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                   ElevatedButton(
                     onPressed: _handleSave,
                     style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(15)),
-                    child: const Text('SALVA UBICAZIONE', style: TextStyle(fontSize: 16)),
+                    child: const Text('CONFERMA UBICAZIONE', style: TextStyle(fontSize: 16)),
                   ),
                 ],
               ),
@@ -143,7 +148,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     );
   }
 
-  // Helper per creare campi di testo uniformi
+  // Widget di supporto per creare caselle di testo uniformi
   Widget _buildTextField(TextEditingController controller, String label, IconData icon, {int? maxLength}) {
     return TextFormField(
       controller: controller,
@@ -151,10 +156,10 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
         labelText: label, 
         prefixIcon: Icon(icon), 
         border: const OutlineInputBorder(),
-        counterText: "", // Nasconde il contatore dei caratteri per la provincia
+        counterText: "", // Nasconde il contatore numerico sotto il campo
       ),
       maxLength: maxLength,
-      validator: (v) => v!.isEmpty ? 'Campo obbligatorio' : null,
+      validator: (v) => v!.isEmpty ? 'Questo campo è obbligatorio' : null,
     );
   }
 }
