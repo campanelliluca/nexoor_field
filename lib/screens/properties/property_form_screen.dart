@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 // Import assoluti: collegano il form alla logica dei dati e al database
 import 'package:nexoor_field/models/property_model.dart';
 import 'package:nexoor_field/services/property_service.dart';
+import 'package:nexoor_field/screens/plant/plant_form_screen.dart';
 
 class PropertyFormScreen extends StatefulWidget {
   // Riceviamo l'ID del cliente per legare questa sede al suo proprietario legale
@@ -43,40 +44,42 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   // --- LOGICA DI SALVATAGGIO ---
 
   Future<void> _handleSave() async {
-    // 1. Controlla se i campi obbligatori sono stati compilati correttamente
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    // 2. Crea l'oggetto PropertyModel con i dati dell'ubicazione
     final property = PropertyModel(
-      customerId: widget.customerId, // Lega l'indirizzo al cliente salvato in precedenza
+      customerId: widget.customerId,
       address: _addressController.text.trim(),
       city: _cityController.text.trim(),
-      province: _provinceController.text.trim().toUpperCase(), // Forza la sigla in maiuscolo
-      buildingCategory: _selectedCategory, // Categoria E1-E8 selezionata dal menu
+      province: _provinceController.text.trim().toUpperCase(),
+      buildingCategory: _selectedCategory,
     );
 
     try {
-      // 3. Invia i dati a Supabase tramite il servizio dedicato
-      await PropertyService().saveProperty(property);
+      // 1. Salviamo e catturiamo l'oggetto restituito (con l'ID)
+      final savedProperty = await PropertyService().saveProperty(property);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Sede dell\'impianto salvata correttamente!')),
+        _showFeedback('✅ Sede salvata. Ora i dati tecnici.');
+
+        // 2. Saltiamo al form dell'impianto passando l'id della proprietà
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PlantFormScreen(propertyId: savedProperty.id!),
+          ),
         );
-        // Torna alla Dashboard una volta completato il flusso Cliente -> Proprietà
-        Navigator.pop(context); 
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Errore durante il salvataggio: $e')),
-        );
-      }
+      if (mounted) _showFeedback('❌ Errore: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showFeedback(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   // --- INTERFACCIA UTENTE (UI) ---
