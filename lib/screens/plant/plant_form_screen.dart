@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-// Import assoluti per modelli e servizi
 import 'package:nexoor_field/models/plant_model.dart';
 import 'package:nexoor_field/services/plant_service.dart';
+// IMPORTANTE: Importiamo il form del componente (Scheda 4)
+import 'package:nexoor_field/screens/equipment/equipment_form_screen.dart';
 
 class PlantFormScreen extends StatefulWidget {
-  final String propertyId; // Ricevuto dal form precedente
+  final String propertyId;
 
   const PlantFormScreen({super.key, required this.propertyId});
 
@@ -14,22 +15,18 @@ class PlantFormScreen extends StatefulWidget {
 
 class _PlantFormScreenState extends State<PlantFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  
-  // Controller per i dati della Scheda 1
   final _cadastralController = TextEditingController();
   final _powerController = TextEditingController();
 
-  // Opzioni normative per i menu a tendina
-  String _selectedIntervention = 'Nuova installazione'; // Scheda 1.1
-  String _selectedFluid = 'Acqua'; // Scheda 1.4
+  String _selectedIntervention = 'Nuova installazione';
+  String _selectedFluid = 'Acqua';
 
   final List<String> _interventionTypes = [
     'Nuova installazione',
     'Ristrutturazione',
     'Sostituzione',
-    'Straordinaria manutenzione'
+    'Manutenzione straordinaria'
   ];
-
   final List<String> _fluids = ['Acqua', 'Aria', 'Altro'];
 
   bool _isLoading = false;
@@ -41,12 +38,12 @@ class _PlantFormScreenState extends State<PlantFormScreen> {
     super.dispose();
   }
 
+  // --- LOGICA DI NAVIGAZIONE AGGIORNATA ---
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    // Creiamo il modello con i dati tecnici
     final plant = PlantModel(
       propertyId: widget.propertyId,
       cadastralCode: _cadastralController.text.trim(),
@@ -56,13 +53,22 @@ class _PlantFormScreenState extends State<PlantFormScreen> {
     );
 
     try {
-      await PlantService().savePlant(plant);
+      // 1. Salviamo l'impianto e otteniamo l'oggetto con l'ID generato da Supabase
+      final savedPlant = await PlantService().savePlant(plant);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Configurazione iniziale completata!')),
+          const SnackBar(content: Text('✅ Impianto salvato. Ora i dati della caldaia.')),
         );
-        // TORNIAMO ALLA HOME: Usiamo popUntil per pulire la pila di pagine
-        Navigator.of(context).popUntil((route) => route.isFirst);
+
+        // 2. NAVIGAZIONE: Passiamo l'ID dell'impianto al form del componente (Scheda 4)
+        // Usiamo pushReplacement per "sostituire" la pagina attuale
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EquipmentFormScreen(plantId: savedPlant.id!),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -86,22 +92,19 @@ class _PlantFormScreenState extends State<PlantFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Identificazione Impianto', 
+                  const Text('Dati Tecnici Identificativi', 
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue)),
                   const SizedBox(height: 20),
-
                   _buildTextField(_cadastralController, 'Codice Catasto Regionale', Icons.qr_code),
                   const SizedBox(height: 15),
-
                   _buildTextField(
                     _powerController, 
-                    'Potenza Termica Nominale Totale (kW)', 
+                    'Potenza Termica Totale (kW)', 
                     Icons.speed,
                     type: TextInputType.number
                   ),
                   const SizedBox(height: 25),
-
-                  const Text('Tipo di Intervento (1.1)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Tipo di Intervento', style: TextStyle(fontWeight: FontWeight.bold)),
                   DropdownButtonFormField<String>(
                     value: _selectedIntervention,
                     decoration: const InputDecoration(border: OutlineInputBorder()),
@@ -109,20 +112,18 @@ class _PlantFormScreenState extends State<PlantFormScreen> {
                     onChanged: (val) => setState(() => _selectedIntervention = val!),
                   ),
                   const SizedBox(height: 20),
-
-                  const Text('Fluido Termovettore (1.4)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Fluido Termovettore', style: TextStyle(fontWeight: FontWeight.bold)),
                   DropdownButtonFormField<String>(
                     value: _selectedFluid,
                     decoration: const InputDecoration(border: OutlineInputBorder()),
                     items: _fluids.map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
                     onChanged: (val) => setState(() => _selectedFluid = val!),
                   ),
-
                   const SizedBox(height: 40),
                   ElevatedButton(
                     onPressed: _handleSave,
                     style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(15)),
-                    child: const Text('SALVA E COMPLETA'),
+                    child: const Text('SALVA E AGGIUNGI GENERATORE'),
                   ),
                 ],
               ),
@@ -131,13 +132,12 @@ class _PlantFormScreenState extends State<PlantFormScreen> {
     );
   }
 
-  // Helper per mantenere lo stile uniforme
   Widget _buildTextField(TextEditingController controller, String label, IconData icon, {TextInputType type = TextInputType.text}) {
     return TextFormField(
       controller: controller,
       keyboardType: type,
       decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), border: const OutlineInputBorder()),
-      validator: (v) => v!.isEmpty ? 'Campo obbligatorio' : null,
+      validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
     );
   }
 }
