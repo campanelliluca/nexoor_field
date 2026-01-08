@@ -1,21 +1,23 @@
-// Usiamo l'import assoluto come richiesto
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nexoor_field/models/plant_model.dart';
 
 class PlantService {
-  // Otteniamo il client Supabase già inizializzato nel main
   final _supabase = Supabase.instance.client;
 
-  // Funzione asincrona per inserire un nuovo impianto nel database
-  Future<void> savePlant(PlantModel plant) async {
+  // Salva un nuovo impianto e restituisce l'oggetto creato con il suo ID
+  Future<PlantModel> savePlant(PlantModel plant) async {
     try {
-      // .from('plants') seleziona la tabella creata nello script SQL
-      // .insert() aggiunge i dati convertiti in JSON
-      await _supabase.from('plants').insert(plant.toJson());
-      print('✅ Impianto registrato correttamente');
+      final response = await _supabase
+          .from('plants')
+          .insert(plant.toJson())
+          .select()
+          .single();
+      
+      print('✅ Impianto tecnico registrato con successo');
+      return PlantModel.fromJson(response);
     } catch (e) {
-      // In caso di errore (es. codice catasto duplicato), lo stampa in console
-      print('❌ Errore durante il salvataggio: $e');
+      print('❌ Errore durante il salvataggio dell\'impianto: $e');
+      rethrow;
     }
   }
 }
