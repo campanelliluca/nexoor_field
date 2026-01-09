@@ -17,6 +17,11 @@ class _PlantFormScreenState extends State<PlantFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _cadastralController = TextEditingController();
   final _powerController = TextEditingController();
+  // NUOVI Controller e Variabili Scheda 2 acqua
+  final _hardnessController = TextEditingController(text: '15'); // Valore default medio
+  final _treatmentController = TextEditingController();
+  bool _hasFilter = false;
+  bool _hasSoftener = false;
 
   String _selectedIntervention = 'Nuova installazione';
   String _selectedFluid = 'Acqua';
@@ -50,6 +55,11 @@ class _PlantFormScreenState extends State<PlantFormScreen> {
       interventionType: _selectedIntervention,
       thermalPowerKw: double.tryParse(_powerController.text) ?? 0.0,
       carrierFluid: _selectedFluid,
+      // Dati Scheda 2 acqua
+      waterHardness: double.tryParse(_hardnessController.text) ?? 0.0,
+      hasFilter: _hasFilter,
+      hasSoftener: _hasSoftener,
+      chemicalTreatment: _treatmentController.text.trim(),
     );
 
     try {
@@ -119,12 +129,48 @@ class _PlantFormScreenState extends State<PlantFormScreen> {
                     items: _fluids.map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
                     onChanged: (val) => setState(() => _selectedFluid = val!),
                   ),
+                  const Divider(height: 40),
+
+                  // --- SEZIONE SCHEDA 2: TRATTAMENTO ACQUA ---
+                  const Text('2. Trattamento Acqua', 
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.blue)),
+                  const SizedBox(height: 15),
+
+                  _buildTextField(
+                    _hardnessController, 
+                    'Durezza totale acqua (°f)', 
+                    Icons.opacity, 
+                    type: TextInputType.number
+                  ),
+
+                  // Gli SwitchListTile non usano l'helper, vanno inseriti direttamente così
+                  SwitchListTile(
+                    title: const Text('Filtro di sicurezza presente?'),
+                    value: _hasFilter,
+                    onChanged: (val) => setState(() => _hasFilter = val),
+                  ),
+
+                  SwitchListTile(
+                    title: const Text('Addolcitore presente?'),
+                    value: _hasSoftener,
+                    onChanged: (val) => setState(() => _hasSoftener = val),
+                  ),
+
+                  _buildTextField(
+                    _treatmentController, 
+                    'Trattamento condizionamento chimico', 
+                    Icons.science,
+                    hint: 'Es: Filmante protettivo, inibitore di corrosione'
+                  ),
+
                   const SizedBox(height: 40),
                   ElevatedButton(
                     onPressed: _handleSave,
                     style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(15)),
                     child: const Text('SALVA E AGGIUNGI GENERATORE'),
                   ),
+                  const SizedBox(height: 40),
+                  
                 ],
               ),
             ),
@@ -132,12 +178,27 @@ class _PlantFormScreenState extends State<PlantFormScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {TextInputType type = TextInputType.text}) {
+  Widget _buildTextField(
+    TextEditingController controller, 
+    String label, 
+    IconData icon, {
+    TextInputType type = TextInputType.text, 
+    String? hint, // Nuovo parametro opzionale
+  }) {
     return TextFormField(
       controller: controller,
       keyboardType: type,
-      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), border: const OutlineInputBorder()),
-      validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint, // Visualizza il suggerimento quando il campo è vuoto
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
+      ),
+      // Rendiamo il trattamento chimico opzionale, poiché non sempre presente
+      validator: (v) {
+        if (label == 'Trattamento condizionamento chimico') return null; 
+        return (v == null || v.isEmpty) ? 'Campo obbligatorio' : null;
+      },
     );
   }
 }
