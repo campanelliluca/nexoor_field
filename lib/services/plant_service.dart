@@ -20,4 +20,15 @@ class PlantService {
       rethrow;
     }
   }
+
+  // Recupera l'impianto collegato a una proprietà
+  Future<PlantModel?> getPlantByPropertyId(String propertyId) async {
+    final response = await _supabase
+        .from('plants')
+        .select()
+        .eq('property_id', propertyId)
+        .maybeSingle();
+    
+    return response != null ? PlantModel.fromJson(response) : null;
+  }
 }

@@ -35,4 +35,15 @@ class PropertyService {
       return [];
     }
   }
+
+  // Recupera la proprietà collegata a un cliente
+  Future<PropertyModel?> getPropertyByCustomerId(String customerId) async {
+    final response = await _supabase
+        .from('properties')
+        .select()
+        .eq('customer_id', customerId)
+        .maybeSingle();
+    
+    return response != null ? PropertyModel.fromJson(response) : null;
+  }
 }
