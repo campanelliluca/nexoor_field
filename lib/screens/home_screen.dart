@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 // Importiamo il form del cliente per poterlo aprire
 import 'package:nexoor_field/screens/customers/customer_form_screen.dart';
+import 'package:nexoor_field/screens/customers/customer_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -36,6 +37,23 @@ class HomeScreen extends StatelessWidget {
               icon: const Icon(Icons.person_add),
               label: const Text('Aggiungi Nuovo Cliente'),
             ),
+            
+            // Apre la lista clienti
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CustomerListScreen()),
+                );
+              },
+              icon: const Icon(Icons.list_alt),
+              label: const Text('GESTIONE ANAGRAFICA'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade50,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+            ),
+            
           ],
         ),
       ),
