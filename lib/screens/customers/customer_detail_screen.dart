@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:nexoor_field/models/customer_model.dart';
+import 'package:nexoor_field/models/intervention_model.dart';
 import 'package:nexoor_field/models/plant_model.dart';
-import 'package:nexoor_field/models/property_model.dart'; // Ora sarà utilizzato correttamente
+import 'package:nexoor_field/models/property_model.dart';
+import 'package:nexoor_field/services/intervention_service.dart';
 import 'package:nexoor_field/services/plant_service.dart';
 import 'package:nexoor_field/services/property_service.dart';
+import 'package:nexoor_field/screens/intervention/intervention_form_screen.dart';
 
 class CustomerDetailScreen extends StatelessWidget {
   final CustomerModel customer;
@@ -19,23 +22,35 @@ class CustomerDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
+            // Dati Anagrafici
             _buildSectionTitle('Dati Anagrafici', Icons.person),
             ListTile(
               title: Text(customer.fullName),
               subtitle: Text('CF: ${customer.fiscalCode}\nEmail: ${customer.email}'),
             ),
-            const Divider(),
             
-            // 1. Recupero della Proprietà (Ubicazione - Scheda 1.2)
+            // Pulsanti di contatto
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildActionButton(Icons.phone, 'Chiama', Colors.green, () {
+                  print('Chiamata a: ${customer.email}'); 
+                }),
+                _buildActionButton(Icons.email, 'Email', Colors.orange, () {
+                  print('Invio email a: ${customer.email}');
+                }),
+              ],
+            ),
+            
+            const Divider(height: 32),
+            
+            // 1. Caricamento Sede
             FutureBuilder<PropertyModel?>(
               future: PropertyService().getPropertyByCustomerId(customer.id!),
               builder: (context, propSnapshot) {
-                if (propSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (!propSnapshot.hasData || propSnapshot.data == null) {
-                  return const Text('Nessuna sede registrata per questo cliente.');
-                }
+                if (propSnapshot.connectionState == ConnectionState.waiting) return const LinearProgressIndicator();
+                if (!propSnapshot.hasData) return const Text('Nessuna sede trovata.');
 
                 final property = propSnapshot.data!;
 
@@ -44,24 +59,22 @@ class CustomerDetailScreen extends StatelessWidget {
                   children: [
                     _buildSectionTitle('Ubicazione', Icons.location_on),
                     ListTile(
-                      title: Text('${property.address}, ${property.city} (${property.province})'),
-                      subtitle: Text('Destinazione d\'uso: ${property.buildingCategory}'),
+                      title: Text('${property.address}, ${property.city}'),
+                      subtitle: Text('Cat. Edificio: ${property.buildingCategory}'),
                     ),
                     const Divider(),
 
-                    // 2. Recupero dell'Impianto (Dati Tecnici - Scheda 1 e 2)
+                    // 2. Caricamento Impianto e Storico
                     FutureBuilder<PlantModel?>(
                       future: PlantService().getPlantByPropertyId(property.id!),
                       builder: (context, plantSnapshot) {
-                        if (plantSnapshot.connectionState == ConnectionState.waiting) {
-                          return const SizedBox(); 
-                        }
-                        if (!plantSnapshot.hasData || plantSnapshot.data == null) {
-                          return const Text('Nessun impianto tecnico trovato.');
-                        }
+                        if (plantSnapshot.connectionState == ConnectionState.waiting) return const SizedBox();
+                        if (!plantSnapshot.hasData) return const Text('Nessun impianto configurato.');
 
                         final plant = plantSnapshot.data!;
-                        return _buildPlantDetails(plant);
+
+                        // Chiamiamo la funzione che include lo storico
+                        return _buildPlantWithHistory(context, plant);
                       },
                     ),
                   ],
@@ -74,37 +87,49 @@ class CustomerDetailScreen extends StatelessWidget {
     );
   }
 
-  // Header per le sezioni del Libretto
+  // --- HELPER UI ---
+
+  Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color)),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSectionTitle(String title, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
           Icon(icon, color: Colors.blue, size: 20),
           const SizedBox(width: 8),
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  // Box riassuntivo dei dati tecnici (Scheda 2 e 4.1)
+  // Box blu con i dati tecnici
   Widget _buildPlantDetails(PlantModel plant) {
     return Card(
       elevation: 0,
       color: Colors.blue.shade50,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           children: [
             _buildInfoRow('Codice Catasto', plant.cadastralCode),
-            _buildInfoRow('Fluido Termovettore', plant.carrierFluid),
             _buildInfoRow('Potenza Termica', '${plant.thermalPowerKw} kW'),
-            const Divider(),
             _buildInfoRow('Durezza Acqua', '${plant.waterHardness} °f'),
-            _buildInfoRow('Trattamento Chimico', plant.chemicalTreatment.isEmpty ? 'Non presente' : plant.chemicalTreatment),
-            _buildInfoRow('Filtro / Addolcitore', '${plant.hasFilter ? "Sì" : "No"} / ${plant.hasSoftener ? "Sì" : "No"}'),
           ],
         ),
       ),
@@ -117,10 +142,84 @@ class CustomerDetailScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
+    );
+  }
+
+  // Sezione che unisce Dati Tecnici + Storico + Pulsante Nuovo Intervento
+  Widget _buildPlantWithHistory(BuildContext context, PlantModel plant) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPlantDetails(plant), 
+        
+        const SizedBox(height: 20),
+        
+        // Pulsante per nuovo intervento
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => InterventionFormScreen(plantId: plant.id!),
+                ),
+              );
+            },
+            icon: const Icon(Icons.add_task),
+            label: const Text('REGISTRA NUOVO INTERVENTO'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade700,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+        _buildSectionTitle('Storico Interventi', Icons.history),
+        
+        // FutureBuilder per caricare gli interventi dal DB
+        FutureBuilder<List<InterventionModel>>(
+          future: InterventionService().getInterventionsByPlantId(plant.id!),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('Nessun intervento registrato finora.', 
+                           style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+              );
+            }
+
+            final interventions = snapshot.data!;
+
+            return ListView.builder(
+              shrinkWrap: true, 
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: interventions.length > 5 ? 5 : interventions.length, 
+              itemBuilder: (context, index) {
+                final item = interventions[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.build_circle, color: Colors.blueGrey),
+                    title: Text(item.type, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('${item.date.day}/${item.date.month}/${item.date.year} - ${item.description}'),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 }
