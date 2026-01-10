@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:nexoor_field/models/customer_model.dart';
 import 'package:nexoor_field/models/intervention_model.dart';
 import 'package:nexoor_field/models/plant_model.dart';
@@ -12,6 +13,14 @@ class CustomerDetailScreen extends StatelessWidget {
   final CustomerModel customer;
 
   const CustomerDetailScreen({super.key, required this.customer});
+
+  // Funzione per lanciare chiamate o email
+  Future<void> _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri)) {
+      debugPrint('Errore: impossibile aprire $url');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,15 +39,17 @@ class CustomerDetailScreen extends StatelessWidget {
               subtitle: Text('CF: ${customer.fiscalCode}\nEmail: ${customer.email}'),
             ),
             
-            // Pulsanti di contatto
+            // Pulsanti di contatto attivati
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildActionButton(Icons.phone, 'Chiama', Colors.green, () {
-                  print('Chiamata a: ${customer.email}'); 
+                  // Nota: Usiamo un numero fittizio perché non abbiamo ancora il campo telefono nel DB
+                  _launchURL('tel:+390123456789'); 
                 }),
                 _buildActionButton(Icons.email, 'Email', Colors.orange, () {
-                  print('Invio email a: ${customer.email}');
+                  // Apre l'app delle email con l'indirizzo del cliente
+                  _launchURL('mailto:${customer.email}'); 
                 }),
               ],
             ),
