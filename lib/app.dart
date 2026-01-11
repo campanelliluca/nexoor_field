@@ -8,6 +8,7 @@ class NexoorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false, // Inserisci questa riga
       title: 'Nexoor Field Service',
       theme: ThemeData(
         // Definiamo il colore principale basato sul blu

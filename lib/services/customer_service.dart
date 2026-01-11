@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nexoor_field/models/customer_model.dart';
 
@@ -39,4 +40,28 @@ class CustomerService {
       return [];
     }
   }
+  // Recupera il numero totale di clienti registrati
+  Future<int> getCustomerCount() async {
+    try {
+      final response = await _supabase
+          .from('customers')
+          .select('id')
+          .count(CountOption.exact);
+      return response.count;
+    } catch (e) {
+      debugPrint('Errore nel conteggio clienti: $e');
+      return 0;
+    }
+  }
+
+  // caancellazione cliente
+  Future<void> deleteCustomer(String id) async {
+  try {
+    await _supabase.from('customers').delete().eq('id', id);
+    print('✅ Cliente eliminato dal database');
+  } catch (e) {
+    print('❌ Errore durante l\'eliminazione: $e');
+    rethrow;
+  }
+}
 }
