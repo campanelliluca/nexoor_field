@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nexoor_field/models/property_model.dart';
 
@@ -46,4 +47,30 @@ class PropertyService {
     
     return response != null ? PropertyModel.fromJson(response) : null;
   }
+
+  // Recupera tutti gli immobili
+  Future<List<PropertyModel>> getAllProperties() async {
+    try {
+      final response = await _supabase.from('properties').select();
+      return (response as List).map((json) => PropertyModel.fromJson(json)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Recupera il numero totale di immobili (Risolve errore Screenshot 263)
+  Future<int> getPropertyCount() async {
+    try {
+      final response = await _supabase.from('properties').select('id').count(CountOption.exact);
+      return response.count;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // Eliminazione immobile
+  Future<void> deleteProperty(String id) async {
+    await _supabase.from('properties').delete().eq('id', id);
+  }
+
 }

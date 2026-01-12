@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nexoor_field/models/plant_model.dart';
 
 class PlantService {
@@ -31,4 +31,30 @@ class PlantService {
     
     return response != null ? PlantModel.fromJson(response) : null;
   }
+
+// Recupera tutti gli impianti
+  Future<List<PlantModel>> getAllPlants() async {
+    try {
+      final response = await _supabase.from('plants').select();
+      return (response as List).map((json) => PlantModel.fromJson(json)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Recupera il numero totale di impianti (Risolve errore Screenshot 263)
+  Future<int> getPlantCount() async {
+    try {
+      final response = await _supabase.from('plants').select('id').count(CountOption.exact);
+      return response.count;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // Eliminazione impianto
+  Future<void> deletePlant(String id) async {
+    await _supabase.from('plants').delete().eq('id', id);
+  }
+
 }

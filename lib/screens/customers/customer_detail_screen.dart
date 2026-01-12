@@ -9,11 +9,17 @@ import 'package:nexoor_field/services/plant_service.dart';
 import 'package:nexoor_field/services/property_service.dart';
 import 'package:nexoor_field/screens/intervention/intervention_form_screen.dart';
 
-class CustomerDetailScreen extends StatelessWidget {
+// 1. Trasformato in StatefulWidget per permettere il refresh
+class CustomerDetailScreen extends StatefulWidget {
   final CustomerModel customer;
 
   const CustomerDetailScreen({super.key, required this.customer});
 
+  @override
+  State<CustomerDetailScreen> createState() => _CustomerDetailScreenState();
+}
+
+class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   // Funzione per lanciare chiamate o email
   Future<void> _launchURL(String url) async {
     final Uri uri = Uri.parse(url);
@@ -25,40 +31,35 @@ class CustomerDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(customer.fullName)),
+      appBar: AppBar(title: Text(widget.customer.fullName)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // Dati Anagrafici
             _buildSectionTitle('Dati Anagrafici', Icons.person),
             ListTile(
-              title: Text(customer.fullName),
-              subtitle: Text('CF: ${customer.fiscalCode}\nEmail: ${customer.email}'),
+              title: Text(widget.customer.fullName),
+              subtitle: Text('CF: ${widget.customer.fiscalCode}\nEmail: ${widget.customer.email}'),
             ),
             
-            // Pulsanti di contatto attivati
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildActionButton(Icons.phone, 'Chiama', Colors.green, () {
-                  // Nota: Usiamo un numero fittizio perché non abbiamo ancora il campo telefono nel DB
                   _launchURL('tel:+390123456789'); 
                 }),
                 _buildActionButton(Icons.email, 'Email', Colors.orange, () {
-                  // Apre l'app delle email con l'indirizzo del cliente
-                  _launchURL('mailto:${customer.email}'); 
+                  _launchURL('mailto:${widget.customer.email}'); 
                 }),
               ],
             ),
             
             const Divider(height: 32),
             
-            // 1. Caricamento Sede
             FutureBuilder<PropertyModel?>(
-              future: PropertyService().getPropertyByCustomerId(customer.id!),
+              // Usiamo widget.customer perché ora siamo in uno State
+              future: PropertyService().getPropertyByCustomerId(widget.customer.id!),
               builder: (context, propSnapshot) {
                 if (propSnapshot.connectionState == ConnectionState.waiting) return const LinearProgressIndicator();
                 if (!propSnapshot.hasData) return const Text('Nessuna sede trovata.');
@@ -75,7 +76,6 @@ class CustomerDetailScreen extends StatelessWidget {
                     ),
                     const Divider(),
 
-                    // 2. Caricamento Impianto e Storico
                     FutureBuilder<PlantModel?>(
                       future: PlantService().getPlantByPropertyId(property.id!),
                       builder: (context, plantSnapshot) {
@@ -83,8 +83,6 @@ class CustomerDetailScreen extends StatelessWidget {
                         if (!plantSnapshot.hasData) return const Text('Nessun impianto configurato.');
 
                         final plant = plantSnapshot.data!;
-
-                        // Chiamiamo la funzione che include lo storico
                         return _buildPlantWithHistory(context, plant);
                       },
                     ),
@@ -98,7 +96,7 @@ class CustomerDetailScreen extends StatelessWidget {
     );
   }
 
-  // --- HELPER UI ---
+  // --- HELPER UI (Invariati, ma ora dentro la classe State) ---
 
   Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap) {
     return InkWell(
@@ -129,7 +127,6 @@ class CustomerDetailScreen extends StatelessWidget {
     );
   }
 
-  // Box blu con i dati tecnici
   Widget _buildPlantDetails(PlantModel plant) {
     return Card(
       elevation: 0,
@@ -160,26 +157,30 @@ class CustomerDetailScreen extends StatelessWidget {
     );
   }
 
-  // Sezione che unisce Dati Tecnici + Storico + Pulsante Nuovo Intervento
   Widget _buildPlantWithHistory(BuildContext context, PlantModel plant) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildPlantDetails(plant), 
-        
         const SizedBox(height: 20),
         
-        // Pulsante per nuovo intervento
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              // AGGIORNAMENTO LOGICA: Aspettiamo il ritorno dal form
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => InterventionFormScreen(plantId: plant.id!),
                 ),
               );
+              
+              // Se l'intervento è stato salvato con successo (Navigator.pop(context, true))
+              // eseguiamo setState per ricaricare i FutureBuilder
+              if (result == true) {
+                setState(() {});
+              }
             },
             icon: const Icon(Icons.add_task),
             label: const Text('REGISTRA NUOVO INTERVENTO'),
@@ -194,8 +195,8 @@ class CustomerDetailScreen extends StatelessWidget {
         const SizedBox(height: 24),
         _buildSectionTitle('Storico Interventi', Icons.history),
         
-        // FutureBuilder per caricare gli interventi dal DB
         FutureBuilder<List<InterventionModel>>(
+          // Il Future si rigenera ogni volta che viene chiamato setState()
           future: InterventionService().getInterventionsByPlantId(plant.id!),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {

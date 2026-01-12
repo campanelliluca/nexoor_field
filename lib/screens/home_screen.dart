@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:nexoor_field/screens/customers/customer_form_screen.dart';
 import 'package:nexoor_field/services/customer_service.dart';
+import 'package:nexoor_field/services/property_service.dart';
+import 'package:nexoor_field/services/plant_service.dart';
 import 'package:nexoor_field/screens/customers/customer_list_screen.dart';
+import 'package:nexoor_field/screens/properties/property_list_screen.dart';
+import 'package:nexoor_field/screens/plant/plant_list_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,19 +16,24 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Definiamo il Future come variabile di stato
+  // Future per i conteggi di ogni categoria
   late Future<int> _customerCountFuture;
+  late Future<int> _propertyCountFuture;
+  late Future<int> _plantCountFuture;
 
   @override
   void initState() {
     super.initState();
-    // Carichiamo il conteggio all'avvio della schermata
-    _loadCustomerCount();
+    // Carichiamo tutti i conteggi all'avvio
+    _loadAllCounts();
   }
 
-  void _loadCustomerCount() {
+  // Funzione centralizzata per aggiornare tutti i dati da Supabase
+  void _loadAllCounts() {
     setState(() {
       _customerCountFuture = CustomerService().getCustomerCount();
+      _propertyCountFuture = PropertyService().getPropertyCount();
+      _plantCountFuture = PlantService().getPlantCount();
     });
   }
 
@@ -34,10 +44,9 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Dashboard Nexoor'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          // Un tasto refresh comodo per aggiornare il conteggio manualmente
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadCustomerCount,
+            onPressed: _loadAllCounts, // Refresh manuale di tutti i contatori
           ),
         ],
       ),
@@ -69,23 +78,47 @@ class _HomeScreenState extends State<HomeScreen> {
                   const CustomerFormScreen(),
                 ),
 
-                // CARD 2: Gestione Anagrafica con FutureBuilder
+                // CARD 2: Gestione Anagrafica (Clienti)
                 FutureBuilder<int>(
                   future: _customerCountFuture,
                   builder: (context, snapshot) {
-                    String countText = '';
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      countText = ' (...)';
-                    } else if (snapshot.hasData) {
-                      countText = ' (${snapshot.data})';
-                    }
-
+                    String countText = snapshot.hasData ? ' (${snapshot.data})' : ' (...)';
                     return _buildMenuCard(
                       context,
                       'GESTIONE ANAGRAFICA$countText',
                       Icons.list_alt,
                       Colors.orange,
                       const CustomerListScreen(),
+                    );
+                  },
+                ),
+
+                // CARD 3: Gestione Immobili
+                FutureBuilder<int>(
+                  future: _propertyCountFuture,
+                  builder: (context, snapshot) {
+                    String countText = snapshot.hasData ? ' (${snapshot.data})' : ' (...)';
+                    return _buildMenuCard(
+                      context,
+                      'GESTIONE IMMOBILI$countText',
+                      Icons.location_city,
+                      Colors.green,
+                      const PropertyListScreen(), // Collegamento reale
+                    );
+                  },
+                ),
+
+                // CARD 4: Gestione Impianti
+                FutureBuilder<int>(
+                  future: _plantCountFuture,
+                  builder: (context, snapshot) {
+                    String countText = snapshot.hasData ? ' (${snapshot.data})' : ' (...)';
+                    return _buildMenuCard(
+                      context,
+                      'GESTIONE IMPIANTI$countText',
+                      Icons.factory,
+                      Colors.redAccent,
+                      const PlantListScreen(), // Collegamento reale
                     );
                   },
                 ),
@@ -97,17 +130,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Helper per costruire Card uniformi
+  // Helper per costruire Card uniformi con refresh automatico al ritorno
   Widget _buildMenuCard(BuildContext context, String title, IconData icon, Color color, Widget destination) {
     return InkWell(
       onTap: () async {
-        // Aspettiamo che l'utente torni dalla schermata di destinazione
         await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => destination),
         );
-        // Al ritorno, aggiorniamo il conteggio nel caso siano stati aggiunti/eliminati clienti
-        _loadCustomerCount();
+        // Al ritorno da qualsiasi schermata, aggiorniamo tutti i conteggi
+        _loadAllCounts();
       },
       child: Card(
         elevation: 4,
